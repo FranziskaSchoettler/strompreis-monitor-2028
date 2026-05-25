@@ -38,7 +38,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin main
           git add data/ docs/
-          git diff --cached --quiet || git commit -m "Weekly update $(date -u +%Y-%m-%d)"
+          git diff --cached --quiet && exit 0
+          git commit -m "Weekly update $(date -u +%Y-%m-%d)"
+          git pull --rebase origin main
           git push
