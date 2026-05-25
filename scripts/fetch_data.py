@@ -8,12 +8,19 @@ Quelle: energy-charts.info (Fraunhofer Institute for Solar Energy Systems ISE)
         - Daten ab 2011
         - sehr stabil, akademisch betrieben
 
-Bei jedem Lauf:
-  1. Pruefe, ob Historie bereits ausreichend lang ist (>= 100 Punkte pro KPI)
-  2. Wenn nein, ziehe automatisch die letzten 2 Jahre nach
-  3. Sonst: nur die neuen Punkte seit dem letzten Lauf
+Endpunkte:
+  /price          - Spotpreise nach Marktgebiet
+  /public_power   - Erzeugung nach Produktionstyp und Land
 
-Aktualisiert data/history.json.
+KPIs:
+  1. CH Spot Day-Ahead (Swissix)
+  2. CH Wasserkraft-Erzeugung (Proxy fuer Hydro-Verfuegbarkeit / Speicher)
+  3. FR Nuklear-Erzeugung (Proxy fuer KKW-Verfuegbarkeit)
+  4. DE Spot Day-Ahead (Proxy fuer europaeischen Marktstress, korreliert mit Gas)
+
+EUR/CHF-Kurs:
+  Wir holen den aktuellen Kurs einmal pro Lauf von der SNB (oeffentlich,
+  ohne Token) und speichern ihn fuer die Anzeige.
 """
 
 from __future__ import annotations
@@ -30,10 +37,15 @@ import requests
 DATA_DIR = Path(__file__).parent.parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
 HISTORY_FILE = DATA_DIR / "history.json"
+META_FILE = DATA_DIR / "meta.json"
 
 API_BASE = "https://api.energy-charts.info"
-MIN_HISTORY_POINTS = 100
+MIN_HISTORY_POINTS = 80
 BACKFILL_DAYS = 730
+
+# Installierte Kapazitaeten als Referenz fuer Verfuegbarkeits-Berechnung
+FR_NUCLEAR_INSTALLED_MW = 61_400  # FR Atomkraft-Flotte
+CH_HYDRO_INSTALLED_MW = 17_500    # CH Wasserkraft (Laufwasser + Speicher)
 
 
 def load_history() -> dict:
@@ -42,15 +54,20 @@ def load_history() -> dict:
             return json.load(f)
     return {
         "ch_spot": [],
-        "ch_reservoir": [],
+        "ch_hydro": [],
         "fr_nuclear": [],
-        "ttf_gas": [],
+        "de_spot": [],
     }
 
 
 def save_history(history: dict) -> None:
     with open(HISTORY_FILE, "w", encoding="utf-8") as f:
         json.dump(history, f, indent=2, ensure_ascii=False)
+
+
+def save_meta(meta: dict) -> None:
+    with open(META_FILE, "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2, ensure_ascii=False)
 
 
 def merge_points(existing: list, new_points: list) -> list:
@@ -62,8 +79,7 @@ def merge_points(existing: list, new_points: list) -> list:
     return merged
 
 
-def http_get(path: str, params: dict, timeout: int = 30) -> dict | None:
-    url = f"{API_BASE}{path}"
+def http_get(url: str, params: dict | None = None, timeout: int = 30) -> dict | None:
     for attempt in range(3):
         try:
             r = requests.get(url, params=params, timeout=timeout)
@@ -102,68 +118,113 @@ def aggregate_to_weekly(timestamps: list, values: list) -> list[dict]:
     ]
 
 
-def fetch_ch_spot(start: str, end: str) -> list[dict]:
-    data = http_get("/price", {"bzn": "CH", "start": start, "end": end})
+def fetch_price(bzn: str, start: str, end: str) -> list[dict]:
+    """Holt Spotpreis fuer ein Marktgebiet und aggregiert zu Wochenmittel."""
+    data = http_get(f"{API_BASE}/price", {"bzn": bzn, "start": start, "end": end})
     if not data or "unix_seconds" not in data or "price" not in data:
         return []
     return aggregate_to_weekly(data["unix_seconds"], data["price"])
 
 
-def fetch_fr_nuclear(start: str, end: str) -> list[dict]:
+def fetch_production_share(country: str, production_keywords: list[str],
+                            installed_mw: int, start: str, end: str) -> list[dict]:
+    """
+    Holt Erzeugung eines bestimmten Produktionstyps fuer ein Land und
+    rechnet in Prozent der installierten Kapazitaet um.
+
+    production_keywords: Liste von Schluesselwoertern, die im 'name' des
+                         Produktionstyps stehen koennen (case-insensitive).
+    """
     data = http_get(
-        "/public_power",
-        {"country": "fr", "start": start, "end": end},
+        f"{API_BASE}/public_power",
+        {"country": country, "start": start, "end": end},
     )
     if not data or "production_types" not in data:
         return []
 
-    nuclear_series = None
+    # Finde alle passenden Produktionstypen und addiere sie auf
+    matching_series = []
     for pt in data["production_types"]:
-        if "nuclear" in pt.get("name", "").lower():
-            nuclear_series = pt.get("data", [])
-            break
+        name = pt.get("name", "").lower()
+        if any(kw.lower() in name for kw in production_keywords):
+            series = pt.get("data", [])
+            if series:
+                matching_series.append(series)
 
-    if not nuclear_series or "unix_seconds" not in data:
+    if not matching_series:
+        print(f"  Keine passenden Produktionstypen gefunden fuer {country} mit {production_keywords}", file=sys.stderr)
         return []
 
-    timestamps = data["unix_seconds"]
-    installed_mw = 61_400
+    timestamps = data.get("unix_seconds", [])
+    if not timestamps:
+        return []
+
+    # Summiere alle passenden Serien zeitpunktweise
+    n = len(timestamps)
+    summed = [0.0] * n
+    for series in matching_series:
+        for i in range(min(n, len(series))):
+            v = series[i]
+            if v is not None:
+                summed[i] += v
+
+    # In Prozent der installierten Kapazitaet umrechnen
     availability = [
-        (v / installed_mw) * 100 if v is not None else None
-        for v in nuclear_series
+        (v / installed_mw) * 100 if v > 0 else None
+        for v in summed
     ]
     return aggregate_to_weekly(timestamps, availability)
 
 
-def fetch_ch_reservoir(start: str, end: str) -> list[dict]:
-    data = http_get(
-        "/reservoir_filling_level",
-        {"country": "ch", "start": start[:10], "end": end[:10]},
+def fetch_ch_spot(start: str, end: str) -> list[dict]:
+    return fetch_price("CH", start, end)
+
+
+def fetch_de_spot(start: str, end: str) -> list[dict]:
+    return fetch_price("DE-LU", start, end)
+
+
+def fetch_ch_hydro(start: str, end: str) -> list[dict]:
+    """CH Wasserkraft-Erzeugung (Laufwasser + Speicher) als % der installierten Kapazitaet."""
+    return fetch_production_share(
+        "ch",
+        ["hydro", "wasser"],
+        CH_HYDRO_INSTALLED_MW,
+        start, end,
     )
-    if data and "data" in data and "unix_seconds" in data:
-        values = data["data"]
-        max_v = max((v for v in values if v is not None), default=100)
-        if max_v > 100:
-            values = [
-                (v / 8_800_000) * 100 if v is not None else None
-                for v in values
-            ]
-        return aggregate_to_weekly(data["unix_seconds"], values)
-
-    return []
 
 
-def fetch_ttf_gas(start: str, end: str) -> list[dict]:
-    data = http_get("/price", {"bzn": "TTF_DA", "start": start, "end": end})
-    if data and "unix_seconds" in data and "price" in data:
-        return aggregate_to_weekly(data["unix_seconds"], data["price"])
-    return []
+def fetch_fr_nuclear(start: str, end: str) -> list[dict]:
+    return fetch_production_share(
+        "fr",
+        ["nuclear", "kern"],
+        FR_NUCLEAR_INSTALLED_MW,
+        start, end,
+    )
+
+
+def fetch_eur_chf() -> float | None:
+    """Holt aktuellen EUR/CHF Wechselkurs von der SNB. Tokenfrei, oeffentlich."""
+    # SNB hat einen JSON-Endpunkt; alternativ frankfurter.app (ECB-Daten, ebenfalls gratis)
+    try:
+        r = requests.get(
+            "https://api.frankfurter.app/latest",
+            params={"from": "EUR", "to": "CHF"},
+            timeout=10,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            if "rates" in data and "CHF" in data["rates"]:
+                return float(data["rates"]["CHF"])
+    except Exception as e:
+        print(f"  EUR/CHF-Kurs nicht abrufbar: {e}", file=sys.stderr)
+    return None
 
 
 def needs_backfill(history: dict) -> bool:
     return any(
         len(history.get(name, [])) < MIN_HISTORY_POINTS
-        for name in ["ch_spot", "ch_reservoir", "fr_nuclear", "ttf_gas"]
+        for name in ["ch_spot", "ch_hydro", "fr_nuclear", "de_spot"]
     )
 
 
@@ -171,14 +232,25 @@ def fetch_window(start_iso: str, end_iso: str) -> dict[str, list[dict]]:
     print(f"  Fenster: {start_iso} bis {end_iso}")
     return {
         "ch_spot": fetch_ch_spot(start_iso, end_iso),
-        "ch_reservoir": fetch_ch_reservoir(start_iso, end_iso),
+        "ch_hydro": fetch_ch_hydro(start_iso, end_iso),
         "fr_nuclear": fetch_fr_nuclear(start_iso, end_iso),
-        "ttf_gas": fetch_ttf_gas(start_iso, end_iso),
+        "de_spot": fetch_de_spot(start_iso, end_iso),
     }
 
 
 def main() -> int:
     history = load_history()
+
+    # Migration: alte Keys auf neue umschreiben, falls vorhanden
+    if "ch_reservoir" in history and "ch_hydro" not in history:
+        history["ch_hydro"] = []
+        del history["ch_reservoir"]
+    if "ttf_gas" in history and "de_spot" not in history:
+        history["de_spot"] = []
+        del history["ttf_gas"]
+    # Sicherstellen, dass alle Keys vorhanden sind
+    for key in ["ch_spot", "ch_hydro", "fr_nuclear", "de_spot"]:
+        history.setdefault(key, [])
 
     if needs_backfill(history):
         print("Erster Lauf oder kurze Historie - starte Backfill (2 Jahre).")
@@ -210,7 +282,19 @@ def main() -> int:
             print(f"  {name}: +{added} neue Punkte ({len(history[name])} gesamt)")
 
     save_history(history)
-    print(f"\nFertig. Insgesamt {sum(len(v) for v in history.values())} Datenpunkte in der Historie.")
+
+    # Wechselkurs holen
+    rate = fetch_eur_chf()
+    meta = {
+        "last_update": datetime.now(timezone.utc).isoformat(),
+        "eur_chf_rate": rate,
+    }
+    save_meta(meta)
+    if rate:
+        print(f"\nEUR/CHF: {rate:.4f}")
+
+    total = sum(len(v) for v in history.values())
+    print(f"\nFertig. Insgesamt {total} Datenpunkte in der Historie.")
     return 0
 
 
