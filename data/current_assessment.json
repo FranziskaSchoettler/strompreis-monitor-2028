@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-05-25T08:49:59.327863+00:00",
+  "week": "KW 22 / 2026",
+  "composite_score": -0.69,
+  "recommendation": {
+    "ampel": "gelb-gruen",
+    "label": "Attraktives Niveau – EKT-Kontakt vorbereiten",
+    "color_hex": "#97C459",
+    "icon": "ti-bell"
+  },
+  "hero_text": "Der Schweizer Strompreis im Grosshandel liegt bei 74 €/MWh – im unteren Mittelfeld der letzten Monate. Die Treiber zeigen kein klares Bild – Markt ist stabil. Insgesamt ist das Niveau attraktiv, aber die Marktphase noch nicht eindeutig. Es lohnt sich, mit EKT eine unverbindliche Cal-28-Indikation einzuholen und intern die Entscheidung vorzubereiten.",
+  "actions": [
+    "EKT um unverbindliche Cal-28-Indikation bitten",
+    "Empfehlung intern abstimmen",
+    "Nächste 2-4 Wochen verstärkt beobachten"
+  ],
+  "kpis": {
+    "ch_spot": {
+      "current": 73.82,
+      "percentile": 25.471698113207548,
+      "trend": "fallend",
+      "score": -1.2811320754716982,
+      "data_quality": "fresh",
+      "last_update": "2026-05-25",
+      "history_length": 106
+    },
+    "ch_reservoir": {
+      "current": null,
+      "percentile": null,
+      "trend": "unbekannt",
+      "score": 0.0,
+      "data_quality": "insufficient"
+    },
+    "fr_nuclear": {
+      "current": 63.38,
+      "percentile": 37.735849056603776,
+      "trend": "seitwärts",
+      "score": 0.49056603773584895,
+      "data_quality": "fresh",
+      "last_update": "2026-05-25",
+      "history_length": 106
+    },
+    "ttf_gas": {
+      "current": null,
+      "percentile": null,
+      "trend": "unbekannt",
+      "score": 0.0,
+      "data_quality": "insufficient"
+    }
+  }
+}
