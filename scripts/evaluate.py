@@ -2,10 +2,10 @@
 evaluate.py
 
 Bewertet die aktuellen Marktdaten gegen ihre eigene Historie und berechnet:
-- Sub-Score pro KPI (-2 bis +2; negativ = günstig für Fixierung, positiv = ungünstig)
+- Sub-Score pro KPI (-2 bis +2; negativ = guenstig fuer Fixierung, positiv = unguenstig)
 - Composite-Score (gewichteter Mittelwert)
 - Ampel-Empfehlung (gruen / gelb-gruen / gelb / rot)
-- Template-basierte Erklärtexte
+- Template-basierte Erklaertexte
 
 Speichert das Ergebnis in data/current_assessment.json.
 """
@@ -24,17 +24,15 @@ HISTORY_FILE = DATA_DIR / "history.json"
 ASSESSMENT_FILE = DATA_DIR / "current_assessment.json"
 
 
-# Gewichtung der KPIs im Composite-Score
 WEIGHTS = {
     "ch_spot": 0.40,
-    "ch_reservoir": 0.20,
+    "ch_hydro": 0.20,
     "fr_nuclear": 0.20,
-    "ttf_gas": 0.20,
+    "de_spot": 0.20,
 }
 
 
 def percentile(value: float, series: list[float]) -> float:
-    """Gibt das Perzentil eines Werts in einer Serie zurück (0-100)."""
     if not series:
         return 50.0
     below = sum(1 for v in series if v < value)
@@ -42,7 +40,6 @@ def percentile(value: float, series: list[float]) -> float:
 
 
 def trend(series: list[float], lookback: int = 4) -> Literal["steigend", "fallend", "seitwärts"]:
-    """Bestimmt den Trend der letzten N Datenpunkte."""
     if len(series) < lookback + 1:
         return "seitwärts"
     recent = series[-1]
@@ -58,47 +55,42 @@ def trend(series: list[float], lookback: int = 4) -> Literal["steigend", "fallen
 
 
 def score_spot(percentile_val: float, trend_dir: str) -> float:
-    """
-    Sub-Score für Spotpreis.
-    Tiefes Perzentil + fallender Trend = stark negativ (günstig für Fix).
-    """
-    base = (percentile_val - 50) / 25  # -2 bei P0, +2 bei P100
+    """Spotpreis: tief = guenstig (negativ)."""
+    base = (percentile_val - 50) / 25
     trend_adj = {"fallend": -0.3, "seitwärts": 0.0, "steigend": +0.3}[trend_dir]
     return max(-2, min(2, base + trend_adj))
 
 
-def score_reservoir(percentile_val: float, trend_dir: str) -> float:
-    """
-    Sub-Score für Speicherseen.
-    Tiefer Füllstand = Preisdruck nach oben = positiver Score (ungünstig).
-    """
+def score_hydro(percentile_val: float, trend_dir: str) -> float:
+    """Hydro-Erzeugung: hoch = entspannt (guenstig, negativ); tief = Druck (ungeunstig, positiv)."""
     base = (50 - percentile_val) / 25
     trend_adj = {"fallend": +0.3, "seitwärts": 0.0, "steigend": -0.3}[trend_dir]
     return max(-2, min(2, base + trend_adj))
 
 
 def score_nuclear(percentile_val: float, trend_dir: str) -> float:
-    """
-    Sub-Score für FR-Nuklear.
-    Tiefe Verfügbarkeit = Preisdruck nach oben = positiver Score.
-    """
+    """FR Nuklear: hoch = guenstig (negativ); tief = Druck (positiv)."""
     base = (50 - percentile_val) / 25
     trend_adj = {"fallend": +0.3, "seitwärts": 0.0, "steigend": -0.3}[trend_dir]
     return max(-2, min(2, base + trend_adj))
 
 
-def score_gas(percentile_val: float, trend_dir: str) -> float:
-    """
-    Sub-Score für TTF Gas.
-    Hoher Gaspreis = Preisdruck nach oben auf Strom = positiver Score.
-    """
+def score_de_spot(percentile_val: float, trend_dir: str) -> float:
+    """DE Spot: tief = guenstig (negativ), wirkt aehnlich wie CH Spot."""
     base = (percentile_val - 50) / 25
     trend_adj = {"fallend": -0.3, "seitwärts": 0.0, "steigend": +0.3}[trend_dir]
     return max(-2, min(2, base + trend_adj))
 
 
+SCORE_FUNCTIONS = {
+    "ch_spot": score_spot,
+    "ch_hydro": score_hydro,
+    "fr_nuclear": score_nuclear,
+    "de_spot": score_de_spot,
+}
+
+
 def evaluate_kpi(name: str, history: list[dict]) -> dict:
-    """Berechnet alle Bewertungsmetriken für einen KPI."""
     if len(history) < 2:
         return {
             "current": None,
@@ -112,16 +104,8 @@ def evaluate_kpi(name: str, history: list[dict]) -> dict:
     current = values[-1]
     p = percentile(current, values)
     t = trend(values)
+    s = SCORE_FUNCTIONS[name](p, t)
 
-    score_fn = {
-        "ch_spot": score_spot,
-        "ch_reservoir": score_reservoir,
-        "fr_nuclear": score_nuclear,
-        "ttf_gas": score_gas,
-    }[name]
-    s = score_fn(p, t)
-
-    # Veraltete Daten warnen
     last_date = date.fromisoformat(history[-1]["date"])
     days_old = (date.today() - last_date).days
     quality = "fresh" if days_old < 14 else "stale"
@@ -138,7 +122,6 @@ def evaluate_kpi(name: str, history: list[dict]) -> dict:
 
 
 def determine_recommendation(composite: float) -> dict:
-    """Mappt den Composite-Score auf eine Ampel und Empfehlung."""
     if composite < -1.0:
         return {
             "ampel": "gruen",
@@ -169,22 +152,13 @@ def determine_recommendation(composite: float) -> dict:
 
 
 def hero_text(kpis: dict, composite: float, recommendation: dict) -> str:
-    """
-    Generiert den Hero-Text aus Templates, basierend auf der Marktlage.
-
-    Wir bauen den Text aus drei Bausteinen zusammen:
-    1. Wie sieht der CH-Spot aus (Anker)
-    2. Wie zeigen die Treiber (Differenzierung)
-    3. Was bedeutet das insgesamt (Synthese)
-    """
     spot = kpis.get("ch_spot", {})
-    reservoir = kpis.get("ch_reservoir", {})
+    hydro = kpis.get("ch_hydro", {})
     nuclear = kpis.get("fr_nuclear", {})
-    gas = kpis.get("ttf_gas", {})
+    de_spot = kpis.get("de_spot", {})
 
     parts = []
 
-    # Baustein 1: Spot-Lage
     if spot.get("current") is not None:
         p = spot["percentile"]
         if p < 25:
@@ -211,33 +185,28 @@ def hero_text(kpis: dict, composite: float, recommendation: dict) -> str:
                 f"{spot['current']:.0f} €/MWh historisch hoch."
             )
 
-    # Baustein 2: Treiber-Lage
     bullish_drivers = []
     bearish_drivers = []
 
-    if reservoir.get("score", 0) > 0.5:
-        bullish_drivers.append("die Speicherseen sind unterdurchschnittlich gefüllt")
-    elif reservoir.get("score", 0) < -0.5:
-        bearish_drivers.append("die Speicherseen sind gut gefüllt")
+    if hydro.get("score", 0) > 0.5:
+        bullish_drivers.append("die Schweizer Wasserkraft läuft unterdurchschnittlich")
+    elif hydro.get("score", 0) < -0.5:
+        bearish_drivers.append("die Schweizer Wasserkraft produziert gut")
 
     if nuclear.get("score", 0) > 0.5:
         bullish_drivers.append("Frankreichs Atomkraftwerke laufen schwach")
     elif nuclear.get("score", 0) < -0.5:
         bearish_drivers.append("Frankreichs Atomkraftwerke laufen gut")
 
-    if gas.get("score", 0) > 0.5:
-        bullish_drivers.append("Gas wird teurer")
-    elif gas.get("score", 0) < -0.5:
-        bearish_drivers.append("Gas wird billiger")
+    if de_spot.get("score", 0) > 0.5:
+        bullish_drivers.append("der deutsche Markt ist angespannt")
+    elif de_spot.get("score", 0) < -0.5:
+        bearish_drivers.append("der deutsche Markt ist entspannt")
 
     if bullish_drivers and not bearish_drivers:
-        parts.append(
-            "Die Treiber zeigen aufwärts: " + ", ".join(bullish_drivers) + "."
-        )
+        parts.append("Die Treiber zeigen aufwärts: " + ", ".join(bullish_drivers) + ".")
     elif bearish_drivers and not bullish_drivers:
-        parts.append(
-            "Die Treiber zeigen abwärts: " + ", ".join(bearish_drivers) + "."
-        )
+        parts.append("Die Treiber zeigen abwärts: " + ", ".join(bearish_drivers) + ".")
     elif bullish_drivers and bearish_drivers:
         parts.append(
             "Die Treiber sind gemischt – "
@@ -249,7 +218,6 @@ def hero_text(kpis: dict, composite: float, recommendation: dict) -> str:
     else:
         parts.append("Die Treiber zeigen kein klares Bild – Markt ist stabil.")
 
-    # Baustein 3: Synthese
     synthesis = {
         "gruen": (
             "Insgesamt ist die aktuelle Marktphase günstig für eine "
@@ -277,7 +245,6 @@ def hero_text(kpis: dict, composite: float, recommendation: dict) -> str:
 
 
 def action_text(recommendation: dict, kpis: dict) -> list[str]:
-    """Generiert die konkrete Handlungsempfehlung als Bulletpoints."""
     actions = {
         "gruen": [
             "Diese Woche: EKT kontaktieren und konkrete Cal-28-Indikation einholen",
@@ -308,7 +275,7 @@ def main() -> int:
         history = json.load(f)
 
     kpis = {}
-    for name in ["ch_spot", "ch_reservoir", "fr_nuclear", "ttf_gas"]:
+    for name in ["ch_spot", "ch_hydro", "fr_nuclear", "de_spot"]:
         kpis[name] = evaluate_kpi(name, history.get(name, []))
 
     valid_scores = {
