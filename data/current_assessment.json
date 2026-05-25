@@ -1,14 +1,14 @@
 {
-  "timestamp": "2026-05-25T08:49:59.327863+00:00",
+  "timestamp": "2026-05-25T09:13:12.752205+00:00",
   "week": "KW 22 / 2026",
-  "composite_score": -0.69,
+  "composite_score": -1.0,
   "recommendation": {
     "ampel": "gelb-gruen",
     "label": "Attraktives Niveau – EKT-Kontakt vorbereiten",
     "color_hex": "#97C459",
     "icon": "ti-bell"
   },
-  "hero_text": "Der Schweizer Strompreis im Grosshandel liegt bei 74 €/MWh – im unteren Mittelfeld der letzten Monate. Die Treiber zeigen kein klares Bild – Markt ist stabil. Insgesamt ist das Niveau attraktiv, aber die Marktphase noch nicht eindeutig. Es lohnt sich, mit EKT eine unverbindliche Cal-28-Indikation einzuholen und intern die Entscheidung vorzubereiten.",
+  "hero_text": "Der Schweizer Strompreis im Grosshandel liegt bei 74 €/MWh – im unteren Mittelfeld der letzten Monate. Die Treiber zeigen abwärts: die Schweizer Wasserkraft produziert gut, der deutsche Markt ist entspannt. Insgesamt ist das Niveau attraktiv, aber die Marktphase noch nicht eindeutig. Es lohnt sich, mit EKT eine unverbindliche Cal-28-Indikation einzuholen und intern die Entscheidung vorzubereiten.",
   "actions": [
     "EKT um unverbindliche Cal-28-Indikation bitten",
     "Empfehlung intern abstimmen",
@@ -24,12 +24,14 @@
       "last_update": "2026-05-25",
       "history_length": 106
     },
-    "ch_reservoir": {
-      "current": null,
-      "percentile": null,
-      "trend": "unbekannt",
-      "score": 0.0,
-      "data_quality": "insufficient"
+    "ch_hydro": {
+      "current": 45.31,
+      "percentile": 95.28301886792453,
+      "trend": "steigend",
+      "score": -2,
+      "data_quality": "fresh",
+      "last_update": "2026-05-25",
+      "history_length": 106
     },
     "fr_nuclear": {
       "current": 63.38,
@@ -40,12 +42,14 @@
       "last_update": "2026-05-25",
       "history_length": 106
     },
-    "ttf_gas": {
-      "current": null,
-      "percentile": null,
-      "trend": "unbekannt",
-      "score": 0.0,
-      "data_quality": "insufficient"
+    "de_spot": {
+      "current": 77.18,
+      "percentile": 34.90566037735849,
+      "trend": "fallend",
+      "score": -0.9037735849056605,
+      "data_quality": "fresh",
+      "last_update": "2026-05-25",
+      "history_length": 106
     }
   }
 }
