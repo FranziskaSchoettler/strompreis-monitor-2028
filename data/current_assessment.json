@@ -1,55 +1,55 @@
 {
-  "timestamp": "2026-06-08T17:37:21.096090+00:00",
-  "week": "KW 24 / 2026",
-  "composite_score": 0.65,
+  "timestamp": "2026-06-15T19:59:11.718181+00:00",
+  "week": "KW 25 / 2026",
+  "composite_score": -0.17,
   "recommendation": {
-    "ampel": "rot",
-    "label": "Nicht fixieren – ungünstige Marktphase",
-    "color_hex": "#E24B4A",
-    "icon": "ti-x"
+    "ampel": "gelb",
+    "label": "Beobachten – noch nicht fixieren",
+    "color_hex": "#EF9F27",
+    "icon": "ti-alert-triangle"
   },
-  "hero_text": "Der Schweizer Strompreis im Grosshandel liegt bei 111 €/MWh – im oberen Mittelfeld der letzten Monate. Die Treiber zeigen aufwärts: die Schweizer Wasserkraft läuft unterdurchschnittlich, der deutsche Markt ist angespannt. Die aktuelle Marktphase ist ungünstig für eine Fixierung. Abwarten ist angezeigt.",
+  "hero_text": "Der Schweizer Strompreis im Grosshandel liegt aktuell bei 70 €/MWh – im historisch tiefen Bereich. Tiefer war er in den letzten Monaten nur selten. Die Treiber sind gemischt – die Schweizer Wasserkraft läuft unterdurchschnittlich, Frankreichs Atomkraftwerke laufen schwach, aber der deutsche Markt ist entspannt. Insgesamt überwiegt aktuell die Unsicherheit. Wir haben Zeit – weiter beobachten, keine Aktion erforderlich.",
   "actions": [
-    "Keine Fixierung",
-    "Weiter beobachten – Marktphase aussitzen",
-    "Bei extremer Lage (alle KPIs rot): GL informieren über Hedge-Engpass"
+    "Keine Aktion erforderlich",
+    "Weiter beobachten – nächster Bericht in 7 Tagen",
+    "Auslöser für nächste Eskalation: signifikante Marktbewegung in einem KPI"
   ],
   "kpis": {
     "ch_spot": {
-      "current": 111.27,
-      "percentile": 64.81481481481481,
-      "trend": "seitwärts",
-      "score": 0.5925925925925923,
+      "current": 70.47,
+      "percentile": 23.853211009174313,
+      "trend": "fallend",
+      "score": -1.3458715596330275,
       "data_quality": "fresh",
-      "last_update": "2026-06-08",
-      "history_length": 108
+      "last_update": "2026-06-15",
+      "history_length": 109
     },
     "ch_hydro": {
-      "current": 21.15,
-      "percentile": 41.66666666666667,
+      "current": 14.49,
+      "percentile": 11.009174311926607,
       "trend": "fallend",
-      "score": 0.6333333333333331,
+      "score": 1.8596330275229358,
       "data_quality": "fresh",
-      "last_update": "2026-06-08",
-      "history_length": 108
+      "last_update": "2026-06-15",
+      "history_length": 109
     },
     "fr_nuclear": {
-      "current": 67.0,
-      "percentile": 54.629629629629626,
-      "trend": "steigend",
-      "score": -0.48518518518518505,
+      "current": 61.76,
+      "percentile": 21.100917431192663,
+      "trend": "fallend",
+      "score": 1.4559633027522936,
       "data_quality": "fresh",
-      "last_update": "2026-06-08",
-      "history_length": 108
+      "last_update": "2026-06-15",
+      "history_length": 109
     },
     "de_spot": {
-      "current": 123.06,
-      "percentile": 89.81481481481481,
-      "trend": "steigend",
-      "score": 1.8925925925925924,
+      "current": 72.18,
+      "percentile": 21.100917431192663,
+      "trend": "fallend",
+      "score": -1.4559633027522936,
       "data_quality": "fresh",
-      "last_update": "2026-06-08",
-      "history_length": 108
+      "last_update": "2026-06-15",
+      "history_length": 109
     }
   }
 }
