@@ -1,14 +1,14 @@
 {
-  "timestamp": "2026-08-31T12:57:47.007111+00:00",
-  "week": "KW 36 / 2026",
-  "composite_score": 1.15,
+  "timestamp": "2026-09-07T11:49:35.907771+00:00",
+  "week": "KW 37 / 2026",
+  "composite_score": 1.29,
   "recommendation": {
     "ampel": "rot",
     "label": "Nicht fixieren – ungünstige Marktphase",
     "color_hex": "#E24B4A",
     "icon": "ti-x"
   },
-  "hero_text": "Der Schweizer Strompreis im Grosshandel ist mit 152 €/MWh historisch hoch. Die Treiber zeigen aufwärts: Frankreichs Atomkraftwerke laufen schwach. Die aktuelle Marktphase ist ungünstig für eine Fixierung. Abwarten ist angezeigt.",
+  "hero_text": "Der Schweizer Strompreis im Grosshandel ist mit 166 €/MWh historisch hoch. Die Treiber zeigen aufwärts: Frankreichs Atomkraftwerke laufen schwach, der deutsche Markt ist angespannt. Die aktuelle Marktphase ist ungünstig für eine Fixierung. Abwarten ist angezeigt.",
   "actions": [
     "Keine Fixierung",
     "Weiter beobachten – Marktphase aussitzen",
@@ -16,40 +16,40 @@
   ],
   "kpis": {
     "ch_spot": {
-      "current": 151.5,
-      "percentile": 95.0,
-      "trend": "seitwärts",
-      "score": 1.8,
+      "current": 165.67,
+      "percentile": 98.34710743801654,
+      "trend": "steigend",
+      "score": 2,
       "data_quality": "fresh",
-      "last_update": "2026-08-31",
-      "history_length": 120
+      "last_update": "2026-09-07",
+      "history_length": 121
     },
     "ch_hydro": {
-      "current": 21.93,
-      "percentile": 45.0,
-      "trend": "fallend",
-      "score": 0.5,
+      "current": 25.43,
+      "percentile": 59.50413223140496,
+      "trend": "seitwärts",
+      "score": -0.38016528925619836,
       "data_quality": "fresh",
-      "last_update": "2026-08-31",
-      "history_length": 120
+      "last_update": "2026-09-07",
+      "history_length": 121
     },
     "fr_nuclear": {
-      "current": 58.35,
-      "percentile": 11.666666666666666,
+      "current": 61.08,
+      "percentile": 22.31404958677686,
       "trend": "steigend",
-      "score": 1.2333333333333334,
+      "score": 0.8074380165289254,
       "data_quality": "fresh",
-      "last_update": "2026-08-31",
-      "history_length": 120
+      "last_update": "2026-09-07",
+      "history_length": 121
     },
     "de_spot": {
-      "current": 106.65,
-      "percentile": 67.5,
-      "trend": "fallend",
-      "score": 0.39999999999999997,
+      "current": 156.13,
+      "percentile": 96.69421487603306,
+      "trend": "steigend",
+      "score": 2,
       "data_quality": "fresh",
-      "last_update": "2026-08-31",
-      "history_length": 120
+      "last_update": "2026-09-07",
+      "history_length": 121
     }
   }
 }
